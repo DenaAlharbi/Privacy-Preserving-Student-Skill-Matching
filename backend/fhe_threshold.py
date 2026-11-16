@@ -69,7 +69,7 @@ NUM_HASHES = 5
 
 MAX_SERVER_SKILLS = 10
 
-
+THRESHOLD = 2
 # ---------------------------------------------------------
 # Token parameters
 # ---------------------------------------------------------
@@ -85,7 +85,7 @@ MAX_SERVER_SKILLS = 10
 
 # random K'   if threshold is not satisfied
 
-TOKEN_BITS = 16
+TOKEN_BITS = 4
 MAX_TOKEN = (2 ** TOKEN_BITS) - 1
 
 
@@ -187,7 +187,6 @@ def build_membership_masks(
 def fhe_threshold_function(
     encrypted_bloom,
     membership_masks,
-    threshold,
     token_k,
     random_token,
 ):
@@ -257,8 +256,7 @@ def fhe_threshold_function(
 
     # threshold_passed = 1
 
-    threshold_passed = match_count >= threshold
-
+    threshold_passed = match_count >= THRESHOLD
     # -----------------------------------------------------
     # SecretTokenGen-style result
     # -----------------------------------------------------
@@ -287,7 +285,6 @@ compiler = fhe.Compiler(
     {
         "encrypted_bloom": "encrypted",
         "membership_masks": "clear",
-        "threshold": "clear",
         "token_k": "clear",
         "random_token": "clear",
     },
@@ -340,10 +337,7 @@ def create_inputset():
                 indices
             ] = 1
 
-        # Vary threshold between examples
-        threshold = (
-            example_number % MAX_SERVER_SKILLS
-        ) + 1
+       
 
         # Include values covering the token range
         
@@ -367,14 +361,13 @@ def create_inputset():
             ) + 1
 
         inputset.append(
-            (
-                bloom,
-                masks,
-                threshold,
-                token_k,
-                random_token,
-            )
+        (
+            bloom,
+            masks,
+            token_k,
+            random_token,
         )
+    )
 
     return inputset
 
@@ -461,7 +454,12 @@ def evaluate_threshold(
     bloom_bits: List[int],
     server_skills: List[str],
     threshold: int,
+    
 ) -> Dict:
+
+
+
+  
     """
     Main public function for Member 2's module
 
@@ -514,6 +512,13 @@ def evaluate_threshold(
             f"Bloom Filter must contain "
             f"{BLOOM_SIZE} bits."
         )
+    
+      # validate fixed threshold
+    if threshold != THRESHOLD:
+        raise ValueError(
+            f"This FHE circuit currently uses threshold {THRESHOLD}"
+        )
+
 
     # Make sure all Bloom Filter values are 0 or 1
     if any(bit not in (0, 1) for bit in bloom_bits):
@@ -608,11 +613,9 @@ def evaluate_threshold(
     # encrypted_bloom -> encrypted
     #
     # everything else -> clear
-
     encrypted_arguments = circuit.encrypt(
         bloom_array,
         membership_masks,
-        threshold,
         server_token_k,
         random_token,
     )
@@ -648,6 +651,13 @@ def evaluate_threshold(
 
     # Concrete may return a NumPy integer.
     client_token = int(client_token)
+
+
+
+    # debug
+    print("server token K =", server_token_k)
+    print("random token K prime =", random_token)
+    print("decrypted client token =", client_token)
 
     # -----------------------------------------------------
     # Result

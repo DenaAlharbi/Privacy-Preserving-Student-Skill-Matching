@@ -1,7 +1,7 @@
 """
-backend/test_fhe_threshold.py
+backend/tests/test_fhe_threshold.py
 
-Simple end-to-end test connecting:
+End-to-end tests connecting:
 
 Member 1:
     Bloom Filter
@@ -11,162 +11,119 @@ Member 2:
     FHE threshold logic
 """
 
-try:
-    from backend.bloom_and_psi import (
-        create_bloom_filter,
-        run_ecdh_psi,
+from backend.bloom_and_psi import (
+    create_bloom_filter,
+    run_ecdh_psi,
+)
+
+from backend.fhe_threshold import (
+    evaluate_threshold,
+)
+
+
+def test_threshold_passed():
+
+    # Student A private skills
+    student_a_skills = [
+        "Python",
+        "AI",
+        "Cybersecurity",
+        "Embedded Systems",
+    ]
+
+    # Student B private skills
+    student_b_skills = [
+        "Python",
+        "AI",
+        "Web",
+        "Databases",
+    ]
+
+    # fixed threshold used by the FHE circuit
+    threshold = 2
+
+    # Member 1 creates Student A's Bloom Filter
+    bloom_payload = create_bloom_filter(
+        student_a_skills
     )
 
-    from backend.fhe_threshold import (
-        evaluate_threshold,
+    # Member 2 performs the FHE threshold check
+    result = evaluate_threshold(
+        bloom_bits=bloom_payload.bit_array,
+        server_skills=student_b_skills,
+        threshold=threshold,
     )
 
-except ImportError:
-    from bloom_and_psi import (
-        create_bloom_filter,
-        run_ecdh_psi,
+    # Python and AI are common
+    # therefore 2 matches >= threshold 2
+    assert result["threshold_satisfied"] is True
+
+    # If threshold passed
+    # client token K' must equal server token K
+    assert (
+        result["client_token"]
+        == result["server_token"]
     )
 
-    from fhe_threshold import (
-        evaluate_threshold,
+    # Member 1 now performs ECDH PSI
+    common_skills = run_ecdh_psi(
+        student_a_skills,
+        str(result["client_token"]),
+        student_b_skills,
+        str(result["server_token"]),
     )
 
-
-# ---------------------------------------------------------
-# Example private student data
-# ---------------------------------------------------------
-
-student_a_skills = [
-    "Python",
-    "AI",
-    "Cybersecurity",
-    "Embedded Systems",
-]
-
-student_b_skills = [
-    "Python",
-    "AI",
-    "Web",
-    "Databases",
-]
+    # PSI should reveal the two common skills
+    assert common_skills == [
+        "python",
+        "ai",
+    ]
 
 
-# ---------------------------------------------------------
-# Threshold
-# ---------------------------------------------------------
+def test_threshold_failed():
 
-threshold = 2
+    # Only Python is common
+    student_a_skills = [
+        "Python",
+        "Cybersecurity",
+        "Embedded Systems",
+    ]
 
+    student_b_skills = [
+        "Python",
+        "Web",
+        "Databases",
+    ]
 
-# ---------------------------------------------------------
-# Member 1:
-# create Student A's Bloom Filter
-# ---------------------------------------------------------
+    threshold = 2
 
-bloom_payload = create_bloom_filter(
-    student_a_skills
-)
+    bloom_payload = create_bloom_filter(
+        student_a_skills
+    )
 
-print()
-print("Student A Bloom Filter created")
-print(
-    "Bloom size:",
-    bloom_payload.size
-)
-print(
-    "Number of hashes:",
-    bloom_payload.num_hashes
-)
+    result = evaluate_threshold(
+        bloom_bits=bloom_payload.bit_array,
+        server_skills=student_b_skills,
+        threshold=threshold,
+    )
 
+    # Only 1 match
+    # therefore threshold 2 should fail
+    assert result["threshold_satisfied"] is False
 
-# ---------------------------------------------------------
-# Member 2:
-# FHE threshold evaluation
-# ---------------------------------------------------------
+    # Client receives a different random token K'
+    assert (
+        result["client_token"]
+        != result["server_token"]
+    )
 
-result = evaluate_threshold(
-    bloom_bits=bloom_payload.bit_array,
-    server_skills=student_b_skills,
-    threshold=threshold,
-)
+    common_skills = run_ecdh_psi(
+        student_a_skills,
+        str(result["client_token"]),
+        student_b_skills,
+        str(result["server_token"]),
+    )
 
-
-print()
-print("----- FHE THRESHOLD RESULT -----")
-
-print(
-    "Threshold satisfied:",
-    result["threshold_satisfied"]
-)
-
-print(
-    "Server token K:",
-    result["server_token"]
-)
-
-print(
-    "Client token:",
-    result["client_token"]
-)
-
-print(
-    "FHE latency:",
-    round(result["latency_ms"], 2),
-    "ms",
-)
-
-
-# ---------------------------------------------------------
-# Member 1:
-# ECDH PSI using the tokens produced by Member 2
-# ---------------------------------------------------------
-
-common_skills = run_ecdh_psi(
-    student_a_skills,
-    str(result["client_token"]),
-    student_b_skills,
-    str(result["server_token"]),
-)
-
-
-print()
-print("----- PSI RESULT -----")
-
-print(
-    "Common skills:",
-    common_skills
-)
-
-
-# ---------------------------------------------------------
-# Expected result
-# ---------------------------------------------------------
-#
-# Student A:
-#
-# Python
-# AI
-# Cybersecurity
-# Embedded
-#
-# Student B:
-#
-# Python
-# AI
-# Web
-# Databases
-#
-# There are two common skills:
-#
-# Python
-# AI
-#
-# threshold = 2
-#
-# therefore:
-#
-# K' == K
-#
-# and ECDH PSI should reveal:
-#
-# ['python', 'ai']
+    # Different tokens prevent the PSI intersection
+    # from being revealed
+    assert common_skills == []
