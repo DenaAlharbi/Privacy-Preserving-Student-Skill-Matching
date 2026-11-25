@@ -463,4 +463,180 @@ h1 {
     padding: 20px;
   }
 }
+.panel,
+.result-panel {
+  max-width: 680px;
+  margin: 28px auto;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #eae8f3;
+  border-radius: 20px;
+  text-align: left;
+  box-shadow: 0 10px 30px #7864b414;
+}
 
+.panel h2,
+.result-panel h2 {
+  margin: 0 0 22px;
+  font-size: 20px;
+}
+
+.role-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.role-buttons button,
+.skill,
+.primary-button,
+.secondary-button {
+  border: 1px solid #e2ddf2;
+  border-radius: 12px;
+  padding: 12px 18px;
+  background: #faf9ff;
+  color: #4e4670;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.role-buttons button:hover,
+.skill:hover,
+.secondary-button:hover {
+  border-color: #9275e5;
+  transform: translateY(-1px);
+}
+
+.role-buttons button.active,
+.skill.selected {
+  background: #eee8ff;
+  border-color: #9275e5;
+  color: #7456d2;
+  font-weight: 700;
+}
+
+.threshold-info {
+  margin: 18px 0;
+  color: #77788e;
+  font-size: 14px;
+}
+
+.primary-button,
+.secondary-button {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.primary-button {
+  background: linear-gradient(110deg, #8065dc, #a58ae9);
+  color: white;
+  border: none;
+}
+
+.primary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px #8b72d74d;
+}
+
+.secondary-button {
+  background: white;
+  color: #8065dc;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.skill {
+  text-align: center;
+}
+
+.session-info,
+.message {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f0eaff;
+  color: #684fc1;
+  font-size: 14px;
+}
+
+.join-box {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.join-box input {
+  flex: 1;
+  padding: 13px 15px;
+  border: 1px solid #e2ddf2;
+  border-radius: 12px;
+  font: inherit;
+  outline: none;
+}
+
+.join-box .primary-button {
+  width: auto;
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+.result-panel {
+  border: 2px solid #9275e5;
+}
+
+.result-panel li {
+  margin: 8px 0;
+  color: #7456d2;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .panel,
+  .result-panel {
+    margin: 20px 12px;
+    padding: 20px;
+  }
+
+  .skills-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .join-box {
+    display: block;
+  }
+
+  .join-box .primary-button {
+    width: 100%;
+    margin-top: 12px;
+  }
+}
+.join-box input {
+  width: 100%;
+  min-width: 0;
+}
+
+.join-box {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.join-box .primary-button {
+  width: 100%;
+  margin-top: 0;
+}
