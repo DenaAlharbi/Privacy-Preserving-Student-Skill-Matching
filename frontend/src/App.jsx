@@ -171,7 +171,7 @@ function App() {
         </p>
 
         <div className="panel">
-          <h2>Choose your role</h2>
+          <h2>1. Choose your role</h2>
 
           <div className="role-buttons">
             <button
