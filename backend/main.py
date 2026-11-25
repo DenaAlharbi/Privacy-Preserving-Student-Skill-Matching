@@ -53,8 +53,7 @@ def root():
 # ---------------------------------------------------------
 
 @app.post("/match", response_model=MatchResponse)
-def match_students(request: MatchRequest):
-
+async def match_students(request: MatchRequest):
     try:
 
         # -------------------------------------------------
