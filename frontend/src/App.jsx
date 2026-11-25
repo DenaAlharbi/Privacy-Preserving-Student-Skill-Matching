@@ -160,7 +160,7 @@ function App() {
     <main className="app-shell">
       <section className="hero">
         <h1>
-          Privacy-Preserving
+          Privacy Preserving
           <br />
           <span className="gradient-text">Skill Matching</span>
         </h1>
@@ -171,7 +171,7 @@ function App() {
         </p>
 
         <div className="panel">
-          <h2>1. Choose your role</h2>
+          <h2>Choose your role</h2>
 
           <div className="role-buttons">
             <button
@@ -196,7 +196,7 @@ function App() {
           </div>
 
           <p className="threshold-info">
-            Matching threshold is fixed at <strong>2 skills</strong>.
+            Matching threshold is <strong>2 skills</strong>.
           </p>
 
           {role === "student-a" && !sessionId && (
