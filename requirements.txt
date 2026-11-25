@@ -1,0 +1,9 @@
+concrete-python
+numpy
+bitarray
+cryptography
+fastapi
+uvicorn
+pydantic
+pytest
+setuptools<81
