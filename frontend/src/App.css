@@ -93,7 +93,7 @@ h1, h2 {
 }
 
 h1 {
-  font-size: clamp(45px, 6vw, 76px);
+  font-size: clamp(30px, 6vw, 76px);
   line-height: 1.16;
   letter-spacing: -3.5px;
   margin: 25px 0 20px;
