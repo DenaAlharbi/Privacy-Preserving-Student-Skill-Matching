@@ -315,10 +315,6 @@ function App() {
                 Threshold was not satisfied. No common skills were revealed.
               </p>
             )}
-
-            <small>
-              FHE latency: {result.fhe_latency_ms.toFixed(2)} ms
-            </small>
           </div>
         )}
       </section>

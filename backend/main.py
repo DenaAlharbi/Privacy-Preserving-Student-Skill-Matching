@@ -172,7 +172,7 @@ def submit_skills(
 
 # Either student checks the result
 @app.get("/sessions/{session_id}/result", response_model=MatchResponse)
-def get_session_result(session_id: str):
+async def get_session_result(session_id: str):
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found")
 
