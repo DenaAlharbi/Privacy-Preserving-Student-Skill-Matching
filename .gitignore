@@ -1,0 +1,15 @@
+
+# Python environments
+.venv/
+.venv-wsl/
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated FHE artifacts
+.artifacts/
+
+# Frontend dependencies
+node_modules/
