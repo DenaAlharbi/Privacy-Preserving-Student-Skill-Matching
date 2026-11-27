@@ -1,235 +1,324 @@
-
 import { useState } from "react";
 import "./App.css";
 
-const purposes = [
-  {
-    id: "course",
-    icon: "🎓",
-    title: "Course Project",
-    description: "Find the right teammate for your next academic project.",
-  },
-  {
-    id: "hackathon",
-    icon: "💻",
-    title: "Hackathon",
-    description: "Connect with people ready to build something exciting.",
-  },
-  {
-    id: "collaboration",
-    icon: "🤝",
-    title: "General Collaboration",
-    description: "Discover people who share your interests and ideas.",
-  },
-  {
-    id: "study",
-    icon: "📚",
-    title: "Study Group",
-    description: "Find peers to learn, practice, and grow with.",
-  },
-];
+const API = "http://127.0.0.1:8000";
+const THRESHOLD = 2;
 
-const availableSkills = [
+const skills = [
   "Python",
-  "Java",
-  "C++",
-  "JavaScript",
   "AI",
-  "Machine Learning",
   "Cybersecurity",
-  "Web Development",
-  "Mobile Development",
+  "Web",
   "Databases",
-  "Embedded Systems",
+  "Java",
+  "JavaScript",
+  "Machine Learning",
   "Cloud Computing",
   "Networking",
+  "Embedded Systems",
   "UI/UX Design",
-  "Data Analysis",
-  "Project Management",
 ];
 
 function App() {
-  const [selectedPurpose, setSelectedPurpose] = useState("course");
-  const [continued, setContinued] = useState(false);
-
+  const [role, setRole] = useState("");
+  const [sessionId, setSessionId] = useState("");
+  const [sessionInput, setSessionInput] = useState("");
   const [selectedSkills, setSelectedSkills] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [threshold, setThreshold] = useState(2);
-  const toggleSkill = (skill) => {
-  setSelectedSkills((current) =>
-    current.includes(skill)
-      ? current.filter((item) => item !== skill)
-      : [...current, skill]
-  );
-};
+  const [result, setResult] = useState(null);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const filteredSkills = availableSkills.filter((skill) =>
-    skill.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const selected = purposes.find(
-    (purpose) => purpose.id === selectedPurpose
-  );
+  function toggleSkill(skill) {
+    setSelectedSkills((current) =>
+      current.includes(skill)
+        ? current.filter((item) => item !== skill)
+        : [...current, skill]
+    );
+  }
+
+  async function createSession() {
+    setLoading(true);
+    setMessage("");
+    setResult(null);
+
+    try {
+      const response = await fetch(`${API}/sessions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          threshold: THRESHOLD,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Could not create session");
+      }
+
+      setSessionId(data.session_id);
+      setRole("student-a");
+      setMessage(
+        `Session created. Share this code with Student B: ${data.session_id}`
+      );
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function joinSession() {
+    if (!sessionInput.trim()) {
+      setMessage("Enter the session code first.");
+      return;
+    }
+
+    setSessionId(sessionInput.trim());
+    setMessage(`Joined session: ${sessionInput.trim()}`);
+  }
+
+  async function submitSkills() {
+    if (!sessionId) {
+      setMessage("Create or join a session first.");
+      return;
+    }
+
+    if (selectedSkills.length === 0) {
+      setMessage("Select at least one skill.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setResult(null);
+
+    try {
+      const response = await fetch(
+        `${API}/sessions/${sessionId}/${role}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            skills: selectedSkills,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "Could not submit skills");
+      }
+
+      if (data.status === "ready") {
+        setMessage("Both students submitted their skills.");
+      } else {
+        setMessage("Your skills were submitted. Waiting for the other student.");
+      }
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function checkResult() {
+    if (!sessionId) {
+      setMessage("Create or join a session first.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    setResult(null);
+
+    try {
+      const response = await fetch(
+        `${API}/sessions/${sessionId}/result`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || "The result is not ready yet.");
+      }
+
+      setResult(data);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <main className="app-shell">
-
       <section className="hero">
-
         <h1>
-          Great things start
+          Privacy Preserving
           <br />
-          <span className="gradient-text">together.</span>
+          <span className="gradient-text">Skill Matching</span>
         </h1>
 
         <p className="subtitle">
-          Find your next teammate through shared skills and interests,
-          without sharing your entire profile.
+          Find shared skills without revealing them before the threshold is
+          satisfied.
         </p>
 
-        {!continued ? (
-          <div className="selection-section">
-            <div className="section-heading">
-              <h2>What are you looking for?</h2>
-              <p> </p>
+        <div className="panel">
+          <h2>1. Choose your role</h2>
+
+          <div className="role-buttons">
+            <button
+              className={role === "student-a" ? "active" : ""}
+              onClick={() => {
+                setRole("student-a");
+                setMessage("");
+              }}
+            >
+              Student A
+            </button>
+
+            <button
+              className={role === "student-b" ? "active" : ""}
+              onClick={() => {
+                setRole("student-b");
+                setMessage("");
+              }}
+            >
+              Student B
+            </button>
+          </div>
+
+          <p className="threshold-info">
+            Matching threshold is <strong>2 skills</strong>.
+          </p>
+
+          {role === "student-a" && !sessionId && (
+            <button
+              className="primary-button"
+              onClick={createSession}
+              disabled={loading}
+            >
+              Create matching session
+            </button>
+          )}
+
+          {role === "student-b" && !sessionId && (
+            <div className="join-box">
+              <input
+                type="text"
+                placeholder="Enter Student A's session code"
+                value={sessionInput}
+                onChange={(event) => setSessionInput(event.target.value)}
+              />
+
+              <button
+                className="primary-button"
+                onClick={joinSession}
+                disabled={loading}
+              >
+                Join session
+              </button>
             </div>
+          )}
 
-            <div className="purpose-grid">
-              {purposes.map((purpose) => (
+          {sessionId && (
+            <div className="session-info">
+              <p>
+                Session code: <strong>{sessionId}</strong>
+              </p>
+
+              <p>
+                Role:{" "}
+                <strong>
+                  {role === "student-a" ? "Student A" : "Student B"}
+                </strong>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {role && sessionId && (
+          <div className="panel">
+            <h2>2. Select your skills</h2>
+
+            <div className="skills-grid">
+              {skills.map((skill) => (
                 <button
-                  key={purpose.id}
-                  type="button"
-                  className={`purpose-card ${
-                    selectedPurpose === purpose.id ? "selected" : ""
-                  }`}
-                  onClick={() => setSelectedPurpose(purpose.id)}
-                  aria-pressed={selectedPurpose === purpose.id}
+                  key={skill}
+                  className={
+                    selectedSkills.includes(skill)
+                      ? "skill selected"
+                      : "skill"
+                  }
+                  onClick={() => toggleSkill(skill)}
                 >
-                  <span className="purpose-icon">{purpose.icon}</span>
-                  <span className="purpose-title">{purpose.title}</span>
-                  <span className="purpose-description">
-                    {purpose.description}
-                  </span>
-
-                  {selectedPurpose === purpose.id && (
-                    <span className="selected-check">✓</span>
-                  )}
+                  {selectedSkills.includes(skill) ? "✓ " : "+ "}
+                  {skill}
                 </button>
               ))}
             </div>
 
+            <p>
+              Selected skills: <strong>{selectedSkills.length}</strong>
+            </p>
+
             <button
-              className="continue-button"
-              onClick={() => setContinued(true)}
+              className="primary-button"
+              onClick={submitSkills}
+              disabled={loading}
             >
-              Continue
+              Submit my skills
             </button>
 
-            <p className="footer-note">
-              Your skills stay yours. Only permitted matches are revealed.
-            </p>
+            <button
+              className="secondary-button"
+              onClick={checkResult}
+              disabled={loading}
+            >
+              Check matching result
+            </button>
           </div>
-        ) : (
-          
-<div className="skills-screen">
-  <button
-    className="back-button"
-    onClick={() => setContinued(false)}
-  >
-    Back
-  </button>
+        )}
 
-  <div className="skills-header">
-    <h2>What are your skills?</h2>
-    <p>Select the skills and interests you'd like to match on.</p>
-  </div>
+        {message && <div className="message">{message}</div>}
 
-  <div className="selected-purpose">
-    <span>{selected.icon}</span>
-    <div>
-      <strong>{selected.title}</strong>
-      <p>Your selected collaboration goal</p>
-    </div>
-  </div>
+        {result && (
+          <div className="result-panel">
+            <h2>Matching result</h2>
 
-  <div className="skills-panel">
-    <div className="skills-panel-heading">
-      <h3>Select your skills</h3>
-      <span>{selectedSkills.length} selected</span>
-    </div>
+            <p>
+              Threshold satisfied:{" "}
+              <strong>
+                {result.threshold_satisfied ? "Yes" : "No"}
+              </strong>
+            </p>
 
-    <input
-      className="skill-search"
-      type="text"
-      placeholder="Search skills..."
-      value={searchQuery}
-      onChange={(e) => setSearchQuery(e.target.value)}
-    />
+            {result.threshold_satisfied ? (
+              <>
+                <p>Common skills:</p>
 
-    <div className="skills-grid">
-      {filteredSkills.map((skill) => (
-        <button
-          key={skill}
-          type="button"
-          className={`skill-chip ${
-            selectedSkills.includes(skill) ? "active" : ""
-          }`}
-          onClick={() => toggleSkill(skill)}
-          aria-pressed={selectedSkills.includes(skill)}
-        >
-          {selectedSkills.includes(skill) ? "✓ " : "+ "}
-          {skill}
-        </button>
-      ))}
-    </div>
-
-    {filteredSkills.length === 0 && (
-      <p className="empty-search">No matching skills found.</p>
-    )}
-  </div>
-
-  <div className="threshold-panel">
-    <div className="threshold-heading">
-      <div>
-        <h3>Minimum shared skills</h3>
-        <p>How many skills should match?</p>
-      </div>
-      <span className="threshold-number">{threshold}</span>
-    </div>
-
-    <input
-      type="range"
-      min="1"
-      max="5"
-      value={threshold}
-      onChange={(e) => setThreshold(Number(e.target.value))}
-      className="threshold-slider"
-    />
-
-    <div className="slider-labels">
-      <span>1 skill</span>
-      <span>5 skills</span>
-    </div>
-  </div>
-
-  <button
-    className="continue-button"
-    disabled={selectedSkills.length === 0}
-    onClick={() =>
-      alert(
-        `Purpose: ${selected.title}\n` +
-        `Skills: ${selectedSkills.join(", ")}\n` +
-        `Threshold: ${threshold}`
-      )
-    }
-      >
-        Continue to Matching 
-      </button>
-    </div>
-
+                <ul>
+                  {result.common_skills.map((skill) => (
+                    <li key={skill}>{skill}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <p>
+                Threshold was not satisfied. No common skills were revealed.
+              </p>
+            )}
+          </div>
         )}
       </section>
     </main>
   );
 }
-
 export default App;
