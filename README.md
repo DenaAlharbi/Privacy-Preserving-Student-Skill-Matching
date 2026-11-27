@@ -1,658 +1,231 @@
 # Privacy-Preserving Student Skill Matching
 
-This project implements a privacy-preserving student skill matching system using a combination of:
+A student skill-matching Proof of Concept (PoC) combining **Bloom Filters, Fully Homomorphic Encryption (FHE), and ECDH-based Private Set Intersection (PSI)**.
 
-- Bloom Filters
-- Fully Homomorphic Encryption (FHE)
-- Threshold Private Set Intersection
-- ECDH-based Private Set Intersection
-- FastAPI
+The system allows two students to identify common skills without revealing their complete profiles to each other. Shared skills are revealed only when the matching threshold is satisfied.
 
-The goal is to allow two students to determine whether they share enough common skills without revealing their complete private skill lists.
+> **Privacy assumption:** The backend is trusted and receives both students' plaintext skill lists. Privacy is enforced between participants, not against the server.
 
-If the number of common skills reaches the required threshold, the shared skills can be revealed. Otherwise, no intersection is revealed.
+## 1. Project Overview
 
----
+Two students join a matching session and submit their skills.
 
-## Project Idea
+For example:
 
-Assume two students have private skill sets.
+- **Student A:** Python, AI, Cybersecurity
+- **Student B:** Python, AI, Web
+- **Threshold:** 2
 
-Example:
-
-Student A:
-
+**Result:**
 ```text
-Python
-AI
-Cybersecurity
-Embedded Systems
+Threshold satisfied: Yes
+Common skills: Python, AI
 ```
 
-Student B:
+If fewer than two skills overlap:
 
 ```text
-Python
-AI
-Web
-Databases
+Threshold satisfied: No
+No common skills were revealed.
 ```
 
-With a threshold of:
+## 2. Privacy Goal & Adversary Model
+
+**Privacy Goal**
+- Reveal common skills only when the threshold is satisfied.
+- Hide non-matching skills from the other participant.
+- Reveal no intersection below the threshold.
+
+**Adversary Model**
+- **Adversary:** A semi-honest participating student.
+- **Capabilities:** Submit skills, join sessions, and observe matching results.
+- **Objective:** Infer another student's undisclosed skills.
+- **Trust assumption:** The backend is trusted and processes plaintext inputs.
+
+The PoC does not protect against malicious participants or repeated-query inference attacks.
+
+## 3. System Architecture
 
 ```text
-2
+Student A                  Student B
+    |                          |
+    +---- Create/Join Session -+
+                 |
+          Submit Skills
+                 |
+          Trusted Backend
+                 |
+          Bloom Filter
+                 |
+       FHE Threshold Check
+                 |
+        Token Generation
+                 |
+            ECDH PSI
+                 |
+          Matching Result
+                 |
+          Student A & B
 ```
 
-the system determines whether at least two skills are shared.
+### Privacy-Enhancing Techniques
 
-In this example:
+| Technique | Purpose |
+|---|---|
+| Bloom Filter | Encodes skills for membership testing |
+| FHE (Concrete-Python) | Performs encrypted membership and threshold computations |
+| ECDH-based PSI | Computes shared skills using threshold-dependent tokens |
 
-```text
-Common skills = Python, AI
-Intersection size = 2
-Threshold = 2
-```
+The current PoC uses a fixed threshold of **2 shared skills**.
 
-Since the threshold is satisfied, the common skills may be revealed.
-
-If the number of common skills is smaller than the threshold, the protocol returns no intersection.
-
----
-
-## Privacy Goal
-
-The system aims to prevent either participant from learning the other participant's complete skill list.
-
-The protocol only allows the intended result to be revealed.
-
-The main privacy-preserving flow is:
-
-```text
-Student A Skills
-        |
-        v
-Bloom Filter
-        |
-        v
-Encrypted Bloom Filter
-        |
-        v
-FHE Membership Tests
-        |
-        v
-Encrypted Match Count
-        |
-        v
-Threshold Check
-        |
-        v
-K or K'
-        |
-        v
-ECDH PSI
-        |
-        v
-Common Skills or Empty Result
-```
-
----
-
-## System Components
-
-### 1. Bloom Filter
-
-Student A's skill list is converted into a Bloom Filter.
-
-Current Proof-of-Concept parameters:
-
-```text
-Bloom Filter size = 128 bits
-Number of hash functions = 5
-```
-
-Each skill is normalized and mapped deterministically to five Bloom Filter positions.
-
-The same hashing method is used when checking Student B's skills.
-
----
-
-### 2. FHE Threshold Evaluation
-
-The project uses Concrete Python for Fully Homomorphic Encryption.
-
-Student A's Bloom Filter is encrypted before the membership computation.
-
-For each skill provided by Student B, the system calculates the same five Bloom Filter positions and checks them against Student A's encrypted Bloom Filter.
-
-The system then homomorphically calculates the number of matching skills.
-
-The current PoC uses a fixed threshold:
-
-```text
-Threshold = 2
-```
-
-The threshold condition is:
-
-```text
-intersection_count >= 2
-```
-
-The server generates two tokens:
-
-```text
-K  = correct server token
-K' = random token
-```
-
-If the threshold condition is satisfied, the FHE circuit produces:
-
-```text
-K
-```
-
-Otherwise, it produces:
-
-```text
-K'
-```
-
-The current PoC uses a 4-bit token representation for compatibility with the Concrete FHE circuit.
-
----
-
-### 3. ECDH Private Set Intersection
-
-After the FHE threshold stage, the tokens are passed to the ECDH PSI implementation.
-
-The skills are tagged using the tokens before the PSI operation.
-
-If:
-
-```text
-client token == server token
-```
-
-then matching skills generate matching PSI values and the intersection can be recovered.
-
-If:
-
-```text
-client token != server token
-```
-
-then even identical skills produce different tagged values and the PSI result becomes empty.
-
-Therefore:
-
-```text
-Threshold satisfied
-        ->
-K == K'
-        ->
-Common skills can be revealed
-```
-
-and:
-
-```text
-Threshold not satisfied
-        ->
-Tokens differ
-        ->
-Common skills are not revealed
-```
-
----
-
-## Backend Flow
-
-The backend performs the following steps:
-
-```text
-1. Receive Student A skills
-2. Receive Student B skills
-3. Create Student A Bloom Filter
-4. Encrypt the Bloom Filter using FHE
-5. Compute Student B membership checks
-6. Count the encrypted matches
-7. Compare the match count with the threshold
-8. Generate the appropriate token
-9. Run ECDH PSI
-10. Return the final result
-```
-
----
-
-## Project Structure
-
-A simplified structure of the project is:
+## 4. Project Structure
 
 ```text
 Privacy-Preserving-Student-Skill-Matching/
-│
 ├── backend/
 │   ├── bloom_and_psi.py
 │   ├── fhe_threshold.py
 │   ├── interfaces.py
 │   ├── main.py
-│   │
 │   └── tests/
 │       ├── test_psi.py
 │       └── test_fhe_threshold.py
-│
 ├── frontend/
-│
+│   ├── src/
+│   │   ├── App.jsx
+│   │   └── App.css
+│   └── package.json
 ├── requirements.txt
+├── .gitignore
 └── README.md
 ```
 
-### Main Backend Files
+## 5. Technologies
 
-#### `backend/bloom_and_psi.py`
+- **Backend:** Python 3.12, FastAPI, Uvicorn
+- **Cryptography:** Concrete-Python, cryptography
+- **Data structures:** bitarray, NumPy
+- **Frontend:** React, Vite, JavaScript, CSS
+- **Testing:** Pytest
+- **Environment:** Ubuntu/Linux or WSL2
 
-Contains:
+## 6. Installation & Setup
 
-- Skill normalization
-- Bloom Filter creation
-- Deterministic Bloom Filter indices
-- ECDH Private Set Intersection
+### Prerequisites
 
-#### `backend/fhe_threshold.py`
+- Ubuntu/Linux or WSL2
+- Python 3.12
+- Node.js and npm
+- Git
 
-Contains:
+**Important:** Keep the project and virtual environment inside the Ubuntu filesystem rather than Windows/OneDrive to avoid Concrete-Python compilation issues.
 
-- Student B membership mask generation
-- FHE Bloom Filter membership evaluation
-- Encrypted intersection counting
-- Threshold evaluation
-- Token generation
-- FHE circuit compilation and execution
-
-#### `backend/main.py`
-
-Contains:
-
-- FastAPI application
-- API request and response models
-- Integration between Bloom Filter, FHE threshold evaluation, and ECDH PSI
-
----
-
-## Backend Requirements
-
-The FHE component uses Concrete Python.
-
-For the current PoC, the backend should be run using:
-
-```text
-Ubuntu/Linux
-Python 3.12
-```
-
-The project was tested using Python 3.12.
-
-Concrete Python was not run using the system Python 3.14 environment.
-
----
-
-## Python Environment Setup
-
-The project can be run using a Python 3.12 virtual environment.
-
-Install Python 3.12 using `uv`:
+### Clone the Repository
 
 ```bash
-uv python install 3.12
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/DenaAlharbi/Privacy-Preserving-Student-Skill-Matching.git skill-matching
+cd skill-matching
 ```
 
-Create a virtual environment:
+### Set Up the Backend
 
 ```bash
-uv venv --python 3.12 .venv
-```
-
-Activate the environment:
-
-```bash
+python3.12 -m venv .venv
 source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Check the Python version:
-
-```bash
-python --version
-```
-
-Expected version:
-
-```text
-Python 3.12.x
-```
-
----
-
-## Install Dependencies
-
-Install the project dependencies using:
-
-```bash
-uv pip install -r requirements.txt
-```
-
-The main backend dependencies include:
-
-```text
-concrete-python
-numpy
-bitarray
-cryptography
-fastapi
-uvicorn
-pydantic
-pytest
-```
-
----
-
-## Running the Backend
-
-Activate the virtual environment first:
-
-```bash
-source .venv/bin/activate
-```
-
-Then start the FastAPI server:
-
-```bash
-python -m uvicorn backend.main:app --reload
-```
-
-If successful, the server should run at:
-
-```text
-http://127.0.0.1:8000
-```
-
----
-
-## Swagger API Documentation
-
-FastAPI automatically provides Swagger documentation.
-
-Open:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-The main endpoint is:
-
-```text
-POST /match
-```
-
----
-
-## Example API Request
-
-Example request:
-
-```json
-{
-  "student_a_skills": [
-    "Python",
-    "AI",
-    "Cybersecurity",
-    "Embedded Systems"
-  ],
-  "student_b_skills": [
-    "Python",
-    "AI",
-    "Web",
-    "Databases"
-  ],
-  "threshold": 2
-}
-```
-
----
-
-## Example Successful Threshold Response
-
-Since both students share:
-
-```text
-Python
-AI
-```
-
-the threshold is satisfied.
-
-Example response:
-
-```json
-{
-  "threshold_satisfied": true,
-  "common_skills": [
-    "python",
-    "ai"
-  ],
-  "fhe_latency_ms": 342.33
-}
-```
-
-The latency value may differ between executions.
-
----
-
-## Example Failed Threshold Request
-
-```json
-{
-  "student_a_skills": [
-    "Python",
-    "Cybersecurity",
-    "Embedded Systems"
-  ],
-  "student_b_skills": [
-    "Python",
-    "Web",
-    "Databases"
-  ],
-  "threshold": 2
-}
-```
-
-Only one skill is shared:
-
-```text
-Python
-```
-
-Therefore the threshold is not satisfied.
-
-Example response:
-
-```json
-{
-  "threshold_satisfied": false,
-  "common_skills": [],
-  "fhe_latency_ms": 320.15
-}
-```
-
----
-
-## Testing
-
-The project includes tests for the Bloom Filter, ECDH PSI, and FHE threshold module.
-
-Run all backend tests using:
+### Run Backend Tests
 
 ```bash
 python -m pytest backend/tests -v
 ```
 
-To test only the FHE threshold module:
+Expected result for the tested version:
+
+```text
+5 passed
+```
+
+### Start the Backend
 
 ```bash
-python -m pytest backend/tests/test_fhe_threshold.py -v
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-The FHE tests include two important cases.
+Backend URL: http://127.0.0.1:8000
 
-### Threshold Satisfied
+API documentation: http://127.0.0.1:8000/docs
 
-Example:
+### Start the Frontend
 
-```text
-Student A:
-Python
-AI
-Cybersecurity
-Embedded Systems
+Open a second terminal:
 
-Student B:
-Python
-AI
-Web
-Databases
-
-Threshold = 2
+```bash
+cd ~/projects/skill-matching/frontend
+npm install
+npm run dev
 ```
 
-Expected result:
+Frontend URL: http://localhost:5173
 
-```text
-Threshold satisfied = True
-Common skills = Python, AI
-```
+## 7. Demo Workflow
 
-### Threshold Not Satisfied
+1. Student A creates a matching session.
+2. Student B joins using the session code.
+3. Both students select and submit their skills.
+4. The backend performs Bloom Filter encoding, FHE threshold evaluation, and ECDH-based PSI.
+5. Both students can check the matching result.
 
-Example:
+### Test Cases
 
-```text
-Student A:
-Python
-Cybersecurity
-Embedded Systems
+| Scenario | Shared Skills | Expected Result |
+|---|---|---|
+| Threshold satisfied | Python, AI | Reveal Python and AI |
+| Threshold not satisfied | Python | No common skills revealed |
 
-Student B:
-Python
-Web
-Databases
+Both scenarios were successfully demonstrated in the tested PoC.
 
-Threshold = 2
-```
+## 8. API Endpoints
 
-Expected result:
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/sessions` | Create a session |
+| `POST` | `/sessions/{id}/student-a` | Submit Student A's skills |
+| `POST` | `/sessions/{id}/student-b` | Submit Student B's skills |
+| `GET` | `/sessions/{id}/result` | Retrieve matching result |
+| `POST` | `/match` | Single-request matching |
 
-```text
-Threshold satisfied = False
-Common skills = []
-```
+## 9. PoC Parameters & Limitations
 
-Both cases were tested successfully.
+| Parameter | Value |
+|---|---|
+| Bloom Filter size | 128 bits |
+| Hash functions | 5 |
+| Threshold | 2 |
+| Maximum Student B skills | 10 |
+| Token representation | 4 bits |
+| Python version | 3.12 |
 
----
+**Limitations:**
+- The trusted backend receives plaintext skill lists.
+- Sessions are stored temporarily in memory.
+- Bloom Filters may produce false positives.
+- The threshold and FHE input shape are fixed.
+- The 4-bit token space is not suitable for production security.
+- Repeated queries may allow participants to infer private information.
+- The implementation is an educational PoC, not a production-secure PSI protocol.
 
-## Current PoC Parameters
+## 10. Research Inspiration
 
-The current implementation uses:
+This project is inspired by Hu et al. (2024), who proposed an FHE-based threshold PSI framework using encrypted Bloom Filters, threshold-dependent secret tokens, and standard PSI.
 
-```text
-Bloom Filter size: 128 bits
-Hash functions: 5
-Maximum Student B skills: 10
-Threshold: 2
-Token size: 4 bits
-```
+Our implementation adapts the general workflow to a student matching application with a trusted backend. It does not reproduce the paper's full distributed protocol or equivalent security guarantees.
 
-These values are selected for the Proof-of-Concept implementation and can be changed in future versions.
+**Reference:**
 
----
+[1] J. Hu, Y. Zhao, B. H. M. Tan, K. M. M. Aung, and H. Wang, "Enabling threshold functionality for private set intersection protocols in cloud computing," *IEEE Transactions on Information Forensics and Security*, vol. 19, pp. 6184–6196, 2024.
 
-## Limitations
-
-This project is a Proof-of-Concept and currently has several limitations.
-
-### Fixed Threshold
-
-The FHE circuit currently uses a fixed threshold of:
-
-```text
-2
-```
-
-Supporting a dynamic threshold would require changes to the compiled Concrete FHE circuit.
-
-### Maximum Number of Server Skills
-
-The current FHE circuit supports at most:
-
-```text
-10 Student B skills
-```
-
-because Concrete circuits require fixed input shapes.
-
-### Bloom Filter False Positives
-
-Bloom Filters are probabilistic data structures.
-
-Therefore, a Bloom Filter membership test may theoretically produce false positives.
-
-The current PoC uses a 128-bit Bloom Filter and five hash functions.
-
-### Token Size
-
-The current PoC uses a 4-bit token.
-
-This smaller token size is used to maintain compatibility with the current Concrete FHE circuit implementation.
-
-A production implementation would require a stronger token representation.
-
-### Platform Requirement
-
-The FHE backend currently runs on Linux/Ubuntu using Python 3.12.
-
----
-
-## Technologies Used
-
-```text
-Python
-Concrete Python
-NumPy
-Bitarray
-Cryptography
-FastAPI
-Uvicorn
-Pytest
-```
-
----
-
-## Summary
-
-The project demonstrates how privacy-preserving technologies can be combined to perform student skill matching.
-
-The system uses:
-
-```text
-Bloom Filter
-+
-Fully Homomorphic Encryption
-+
-Threshold Evaluation
-+
-ECDH Private Set Intersection
-```
-
-to ensure that students do not need to reveal their complete private skill sets.
-
-The intersection is only revealed when the required number of common skills is reached.
+DOI: https://doi.org/10.1109/TIFS.2024.3402355
