@@ -1,0 +1,89 @@
+def fhe_threshold_function(
+    encrypted_bloom,
+    membership_masks,
+    threshold,
+    token_k,
+    random_token,
+):
+    """
+    Homomorphically determine whether enough skills match
+
+    Everything involving Student A's Bloom Filter remains encrypted during evaluation
+    """
+
+    # -----------------------------------------------------
+    # Membership test
+    # -----------------------------------------------------
+    
+    # encrypted_bloom shape:
+    #     (128,)
+    
+    # membership_masks shape:
+    #     (10, 128)
+    
+    # Multiplication keeps only Bloom Filter positions corresponding to each Student B skill
+
+    selected_bits = membership_masks * encrypted_bloom
+
+    # Sum each row
+    
+    # A real skill uses NUM_HASHES = 5 positions
+    
+    # If all five corresponding encrypted Bloom Filter
+    # bits are 1:
+    #     selected_sum = 5
+    
+    # otherwise:
+    #     selected_sum < 5
+
+    selected_sums = np.sum(
+        selected_bits,
+        axis=1,
+    )
+
+    # -----------------------------------------------------
+    # Determine which skills matched
+    # -----------------------------------------------------
+    
+    # Each row becomes:
+    
+    # 1 -> Bloom Filter membership test succeeded
+    # 0 -> membership test failed
+    
+    # This comparison is evaluated homomorphically
+
+    matches = selected_sums == NUM_HASHES
+
+    # -----------------------------------------------------
+    # Count matching skills
+    # -----------------------------------------------------
+
+    match_count = np.sum(matches)
+
+    # -----------------------------------------------------
+    # Threshold test
+    # -----------------------------------------------------
+    #
+    # Example:
+
+    # match_count = 2
+    # threshold   = 2
+
+    # threshold_passed = 1
+
+    threshold_passed = match_count >= threshold
+
+    # -----------------------------------------------------
+    # SecretTokenGen-style result
+    # -----------------------------------------------------
+    # If threshold_passed = 1:
+    #     selected_token = token_k
+
+    # If threshold_passed = 0:
+    #     selected_token = random_token
+
+    # We write it arithmetically because normal Python branching on encrypted data is not what we want
+
+    selected_token = (threshold_passed * token_k + (1 - threshold_passed) * random_token)
+
+    return selected_token

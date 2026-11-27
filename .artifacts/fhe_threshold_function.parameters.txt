@@ -1,0 +1,5 @@
+encrypted_bloom :: EncryptionStatus.ENCRYPTED
+membership_masks :: EncryptionStatus.CLEAR
+threshold :: EncryptionStatus.CLEAR
+token_k :: EncryptionStatus.CLEAR
+random_token :: EncryptionStatus.CLEAR

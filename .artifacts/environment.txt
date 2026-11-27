@@ -1,0 +1,2 @@
+Linux-7.0.0-43-generic-x86_64-with-glibc2.43 #43-Ubuntu SMP PREEMPT_DYNAMIC Fri Oct 23 13:25:25 UTC 2026
+Python 3.12.16
