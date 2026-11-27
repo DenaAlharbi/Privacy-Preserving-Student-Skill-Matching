@@ -157,8 +157,6 @@ python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
 
 Backend URL: http://127.0.0.1:8000
 
-API documentation: http://127.0.0.1:8000/docs
-
 ### Start the Frontend
 
 Open a second terminal:
@@ -198,16 +196,7 @@ Both scenarios were successfully demonstrated in the tested PoC.
 | `GET` | `/sessions/{id}/result` | Retrieve matching result |
 | `POST` | `/match` | Single-request matching |
 
-## 9. PoC Parameters & Limitations
-
-| Parameter | Value |
-|---|---|
-| Bloom Filter size | 128 bits |
-| Hash functions | 5 |
-| Threshold | 2 |
-| Maximum Student B skills | 10 |
-| Token representation | 4 bits |
-| Python version | 3.12 |
+## 9. Limitations
 
 **Limitations:**
 - The trusted backend receives plaintext skill lists.
